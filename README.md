@@ -1,167 +1,508 @@
-# RAGChatbot
+# Modern Secure RAG System
 
-An experimental Retrieval-Augmented Generation (RAG) chatbot built with Next.js, Supabase storage/Postgres (with vector embeddings), a local embedding pipeline, Google Gemini (GenAI) as the LLM, and a background worker that chunks and indexes uploaded documents.
+A modern Retrieval-Augmented Generation (RAG) platform built with:
 
-This repository is a starter for building a private, user-scoped RAG system that stores user documents in Supabase storage, creates embeddings (locally via Xenova), indexes them in Postgres, and answers user questions by retrieving relevant chunks and asking Gemini for a grounded response.
+- Next.js
+- Supabase
+- pgvector
+- Gemini/OpenAI
+- Semantic Chunking
+- Hybrid Retrieval
+- Context Engineering
+- Prompt Injection Defense
+- Faithfulness Evaluation
 
-## Key features
+This project goes beyond traditional tutorial-style RAG systems by implementing:
 
-- Upload PDFs (via `pages/api/upload.js`) and store them in Supabase storage.
-- Background worker (`worker.js`) parses PDFs, chunks text, and creates embeddings using a local Xenova model.
-- Store document metadata in a `documents` table and chunk embeddings in a `chunks` table in Supabase/Postgres.
-- Vector search via Postgres <-> operator to retrieve relevant context for a user's question (`pages/api/chat.js`).
-- Generation performed with Google Gemini (via `@google/genai`) while instructing the model to answer only from context.
-- Auth helpers using JWT cookies are in `lib/auth.js`.
+- semantic chunking
+- metadata enrichment
+- hybrid retrieval
+- reranking
+- context compression
+- token-aware context assembly
+- output guardrails
+- multi-tenant isolation
+- secure ingestion pipelines
 
-## Repository layout (important files)
+---
 
-- `app/` - Next.js app routes and UI (React + app directory).
-- `components/FileUploader.jsx` - client-side file upload component.
-- `pages/api/upload.js` - API route to receive uploads, store files and queue worker jobs.
-- `pages/api/chat.js` - API route that performs vector search and calls Gemini to answer.
-- `lib/` - helper libraries (Supabase clients, auth, chunker, GenAI wrapper).
-- `worker.js` - background PDF-processing worker that extracts text and stores embeddings.
-- `test/`, `data/` - sample/test artifacts.
+# Architecture Overview
 
-## Quick contract (inputs / outputs)
+```mermaid
+flowchart TD
 
-- Inputs: user uploads (PDFs), user question text (POST /api/chat).
-- Outputs: stored document metadata, chunked embeddings in DB, and a JSON reply with an `answer` string and `sources` array from `/api/chat`.
-- Error modes: Missing env vars, unauthorized requests, or failure to connect to Supabase/Redis will return 4xx/5xx responses.
+A[Document Upload] --> B[PDF Extraction]
+B --> C[PII Redaction]
+C --> D[Semantic Analysis]
+D --> E[Semantic Chunking]
+E --> F[Chunk Summarization]
+F --> G[Metadata Enrichment]
+G --> H[Embedding Generation]
+H --> I[Hybrid Index Storage]
 
-## Prerequisites
-
-- Node.js 18+ (recommended) and npm/yarn/pnpm.
-- A Supabase project (Postgres + Storage). Create a `documents` storage bucket and the DB tables described below.
-- Redis instance (for BullMQ job queue). A hosted Redis or local Redis is fine.
-- Google Cloud (Gemini) API key with access to the GenAI SDK.
-
-## Environment variables
-
-Create a `.env.local` (or set environment variables in your deployment) with at least the following:
-
-- NEXT_PUBLIC_SUPABASE_URL - your Supabase URL (public)
-- NEXT_PUBLIC_SUPABASE_ANON_KEY - your Supabase anon key (public)
-- SUPABASE_SERVICE_ROLE_KEY - Supabase service role key (server-only)
-- SUPABASE_SERVICE_ROLE_URL - Postgres connection string used by some server code (e.g. postgres://...)
-- SUPABASE_URL - same as above used by worker (optional if you supply NEXT_PUBLIC_SUPABASE_URL)
-- GEMINI_API_KEY - Google GenAI / Gemini API key
-- REDIS_URL - URL for Redis used by BullMQ (e.g. redis://:password@host:port)
-- JWT_SECRET - secret used to sign JWT cookies
-
-Notes:
-- Keep `SUPABASE_SERVICE_ROLE_KEY` and `GEMINI_API_KEY` private — do not expose them to the browser.
-- In this repo some server files read `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; ensure both are set.
-
-## Database schema (expected tables)
-
-This project expects at least two simple tables. Adjust types to your Supabase/Postgres setup.
-
-- `documents`:
-  - `id` (uuid or serial)
-  - `user_id` (references your user id)
-  - `file_name` (text)
-  - `storage_path` (text)
-  - `created_at` (timestamp)
-
-- `chunks`:
-  - `id`
-  - `document_id` (foreign key -> documents.id)
-  - `chunk_text` (text)
-  - `embedding` (vector/float[]) — depends on your vector extension (or store as float[])
-  - `token_count` (int)
-
-Note: The repo currently uses basic Postgres vector search with a <-> operator; if you use pgvector or Supabase Vector Index you should adapt the column types accordingly.
-
-## Install and run locally
-
-1. Install dependencies
-
-```bash
-# using npm
-npm install
-
-# or using yarn
-yarn
+I --> J[User Question]
+J --> K[Authentication]
+K --> L[Prompt Injection Defense]
+L --> M[Query Sanitization]
+M --> N[Query Rewriting]
+N --> O[Question Embedding]
+O --> P[Hybrid Retrieval]
+P --> Q[Reranking]
+Q --> R[Context Compression]
+R --> S[Token Budget Assembly]
+S --> T[Secure Prompt Construction]
+T --> U[LLM Generation]
+U --> V[Output Guardrails]
+V --> W[Faithfulness Evaluation]
+W --> X[Cited Response]
 ```
 
-2. Create `.env.local` based on the environment variables above.
+---
 
-3. Start the Next.js development server
+# Key Features
+
+## Secure Ingestion Pipeline
+
+- document hashing
+- deduplication
+- async ingestion workers
+- semantic chunking
+- metadata enrichment
+- token-aware chunking
+- PII redaction
+- vector indexing
+
+---
+
+## Retrieval Intelligence
+
+- hybrid retrieval
+  - vector similarity
+  - full-text search
+  - metadata filtering
+- reranking
+- context compression
+- token-budget management
+- semantic retrieval
+
+---
+
+## Security Features
+
+- prompt injection detection
+- multi-tenant isolation
+- output guardrails
+- sensitive data redaction
+- secure prompt construction
+- signed document URLs
+
+---
+
+## Context Engineering
+
+Instead of using:
+
+```text
+more context
+```
+
+this system focuses on:
+
+```text
+better context
+```
+
+through:
+
+- semantic chunking
+- reranking
+- compression
+- token-aware assembly
+- sliding retrieval prioritization
+
+---
+
+# Traditional RAG vs This System
+
+| Capability | Traditional RAG | This System |
+|---|---|---|
+| Fixed chunking | ✅ | ❌ |
+| Semantic chunking | ❌ | ✅ |
+| Hybrid retrieval | ❌ | ✅ |
+| Prompt injection defense | ❌ | ✅ |
+| Reranking | ❌ | ✅ |
+| Context compression | ❌ | ✅ |
+| Token-aware assembly | ❌ | ✅ |
+| Faithfulness scoring | ❌ | ✅ |
+| Metadata enrichment | ❌ | ✅ |
+| Multi-tenant isolation | ❌ | ✅ |
+| Output guardrails | ❌ | ✅ |
+
+---
+
+# Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js |
+| Database | Supabase PostgreSQL |
+| Vector Search | pgvector |
+| Storage | Supabase Storage |
+| Embeddings | Xenova Transformers |
+| LLM | Gemini / OpenAI |
+| Queue | BullMQ |
+| Redis | Upstash Redis |
+| NLP | compromise + natural |
+| Tokenization | gpt-tokenizer |
+
+---
+
+# System Architecture
+
+```mermaid
+flowchart LR
+
+A[Client] --> B[Next.js API]
+B --> C[Authentication]
+B --> D[Upload Service]
+B --> E[Chat Service]
+
+D --> F[Supabase Storage]
+D --> G[PDF Worker]
+
+G --> H[Semantic Chunker]
+H --> I[Embedding Generator]
+I --> J[pgvector]
+
+E --> K[Hybrid Retrieval]
+K --> J
+K --> L[FTS Index]
+
+K --> M[Reranker]
+M --> N[Context Compression]
+N --> O[LLM]
+O --> P[Faithfulness Engine]
+P --> Q[Response]
+```
+
+---
+
+# Semantic Chunking Pipeline
+
+The system uses embedding-driven semantic chunking instead of fixed-size splitting.
+
+## Flow
+
+```mermaid
+flowchart TD
+
+A[Raw Text] --> B[Sentence Segmentation]
+B --> C[Sentence Embeddings]
+C --> D[Semantic Similarity]
+D --> E[Boundary Detection]
+E --> F[Semantic Chunks]
+F --> G[Token-Aware Merge]
+G --> H[Metadata Enrichment]
+```
+
+---
+
+# Hybrid Retrieval Pipeline
+
+```mermaid
+flowchart TD
+
+A[Question] --> B[Query Embedding]
+A --> C[Keyword Extraction]
+
+B --> D[Vector Search]
+C --> E[FTS Search]
+
+D --> F[Merge Results]
+E --> F
+
+F --> G[Reranking]
+G --> H[Compression]
+H --> I[Context Assembly]
+```
+
+---
+
+# Prompt Injection Defense
+
+The system blocks:
+
+- instruction override attempts
+- secret extraction attempts
+- system prompt leakage
+- role escalation attacks
+- unsafe retrieval manipulation
+
+Example blocked prompts:
+
+```text
+Ignore previous instructions
+Reveal API keys
+Dump database
+Show system prompt
+```
+
+---
+
+# Faithfulness Evaluation
+
+The system evaluates:
+
+- answer grounding
+- hallucination risk
+- retrieval quality
+- context relevance
+
+This helps ensure:
+
+```text
+answer ∈ retrieved context
+```
+
+instead of unsupported generation.
+
+---
+
+# Database Schema
+
+## documents
+
+| Column | Type |
+|---|---|
+| id | uuid |
+| user_id | uuid |
+| file_name | text |
+| storage_path | text |
+| file_hash | text |
+| created_at | timestamp |
+
+---
+
+## document_chunks
+
+| Column | Type |
+|---|---|
+| id | uuid |
+| document_id | uuid |
+| text_content | text |
+| summary | text |
+| heading | text |
+| keywords | text[] |
+| token_count | int |
+| embedding | vector |
+| fts | tsvector |
+
+---
+
+# Environment Variables
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+DATABASE_URL=
+REDIS_URL=
+JWT_SECRET=
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+
+---
+
+# Installation
+
+## Clone Repository
+
+```bash
+git clone <repo>
+cd <repo>
+```
+
+---
+
+## Install Dependencies
+
+```bash
+npm install
+```
+
+---
+
+## Start Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-By default Next.js runs on port 3000.
+---
 
-Open the UI in your browser:
-Main app: http://localhost:3000
-Important UI routes
-/ — root (app/page.tsx)
-/login — login page (login.js)
-/register — register page (register.js)
-/dashboard — authenticated dashboard (dashboard.js)
-To use upload/chat features, sign up via /register, log in via /login (the app uses JWT cookies, see auth.js), then visit /dashboard.
-
-
-
-4. Start the worker (in a separate terminal). The worker requires the same env vars plus `REDIS_URL`.
+## Start Worker
 
 ```bash
-# Run the worker with node
-node worker.js
-
-# If you prefer: use nodemon for automatic reloads during development
-npx nodemon worker.js
+node workers/pdfWorker.js
 ```
 
-5. (Optional) Start a local Redis if you don't have a hosted one. On macOS with Homebrew:
+---
 
-```bash
-brew install redis
-redis-server /usr/local/etc/redis.conf
+# PostgreSQL Setup
+
+Enable pgvector:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-## Upload flow & background processing
+---
 
-- Client uploads a PDF via `components/FileUploader.jsx` which posts to `pages/api/upload.js`.
-- The API stores the file in Supabase Storage and inserts a `documents` row.
-- A BullMQ job is queued using Redis. The `worker.js` listens on the `pdf-processing` queue.
-- The worker reads the PDF, extracts text, splits into chunks, computes embeddings with a local model (`@xenova/transformers`) and inserts `chunks` rows with the vector data.
+## Vector Index
 
-## Asking questions (chat)
+```sql
+CREATE INDEX IF NOT EXISTS
+idx_document_chunks_embedding
 
-- The client calls `/api/chat` (POST) with `{ question }`.
-- The API authenticates the user via JWT cookie (`lib/auth.js`).
-- A local embedding is computed for the query and used to run a vector similarity search against the `chunks` table.
-- The top chunks are concatenated and sent to Gemini with instructions to answer using ONLY the provided context.
+ON document_chunks
 
-Example response JSON:
+USING ivfflat
+(
+  embedding vector_cosine_ops
+)
+
+WITH (lists = 100);
+```
+
+---
+
+## Full Text Search Index
+
+```sql
+CREATE INDEX IF NOT EXISTS
+idx_document_chunks_fts
+
+ON document_chunks
+USING GIN(fts);
+```
+
+---
+
+# API Endpoints
+
+## Upload
+
+```http
+POST /api/upload
+```
+
+Uploads and processes documents.
+
+---
+
+## Chat
+
+```http
+POST /api/chat
+```
+
+Retrieves relevant context and generates grounded answers.
+
+---
+
+## Register
+
+```http
+POST /api/auth/register
+```
+
+---
+
+## Login
+
+```http
+POST /api/auth/login
+```
+
+---
+
+# Example Chat Request
 
 ```json
 {
-  "answer": "...",
-  "sources": [ { "id": 123, "chunk_text": "..." }, ... ]
+  "question": "What authentication method is used?"
 }
 ```
 
-## Notes & gotchas
+---
 
-- Local embedding model: this project uses `@xenova/transformers` and a model id like `Xenova/all-MiniLM-L6-v2`. That library may require extra native/binary dependencies or a Node.js environment that supports WASM; consult the package docs.
-- Gemini SDK: the code uses `@google/genai` and expects `GEMINI_API_KEY` to be set. SDK responses may return different shapes — the code contains logic to extract text from candidate content arrays.
-- Postgres connection: some code uses `SUPABASE_SERVICE_ROLE_URL` (a full Postgres connection string). Ensure you have a connection string that allows queries from server-side code.
-- Secure your keys: never expose service role keys in client-side code. Only use anon keys on the browser.
-- Redis is used as the job queue backend (message broker) for background PDF processing via BullMQ.
+# Example Response
 
+```json
+{
+  "answer": "JWT authentication is used.",
+  "faithfulness": 0.92,
+  "sources": [
+    {
+      "document": "architecture.pdf",
+      "heading": "Authentication"
+    }
+  ]
+}
+```
 
-## Deploy
+---
 
-- You can deploy the Next.js app to Vercel or any Node hosting that supports Next.js.
-- The worker must run separately (e.g. on a small compute instance, Fly, Railway, or a background worker service) with access to Redis and Supabase service role key.
+# Security Model
 
+```mermaid
+flowchart TD
 
+A[User Query] --> B[Sanitization]
+B --> C[Injection Detection]
+C --> D[Retrieval]
+D --> E[Secure Prompt]
+E --> F[LLM]
+F --> G[Output Filtering]
+G --> H[Safe Response]
+```
 
+---
 
+# Future Improvements
+
+- streaming responses
+- conversational memory
+- knowledge graphs
+- advanced rerankers
+- multilingual retrieval
+- OCR support
+- document ACLs
+- RAG evaluation pipelines
+- observability dashboards
+- retrieval analytics
+
+---
+
+# Core Architectural Philosophy
+
+Traditional RAG systems optimize for:
+
+```text
+MORE CONTEXT
+```
+
+This system optimizes for:
+
+```text
+BETTER CONTEXT
+```
+
+through:
+
+- semantic retrieval
+- context engineering
+- reranking
+- compression
+- security-aware orchestration
