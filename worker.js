@@ -8,14 +8,17 @@ import { Worker } from "bullmq";
 import { pipeline } from "@xenova/transformers";
 import { createClient } from "@supabase/supabase-js";
 
-/* -------------------- Supabase -------------------- */
 
 const supabaseUrl =
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+console.log("Supabase URL:", supabaseUrl ? "Found" : "Missing");
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+console.log("Supabase Service Role Key:", supabaseKey ? "Found" : "Missing");
+
 if (!supabaseUrl || !supabaseKey) {
-  console.error("❌ Missing Supabase env vars");
+  console.error("Missing Supabase env vars");
   process.exit(1);
 }
 
@@ -51,16 +54,16 @@ if (redisUrl) {
     if (ok) {
       connection = conn;
       redisReady = true;
-      console.log("✅ Redis connected");
+      console.log("Redis connected");
     } else {
       conn.disconnect();
-      console.warn("⚠️ Redis not ready, using poller");
+      console.warn("Redis not ready, using poller");
     }
   } catch {
-    console.warn("⚠️ Redis failed, using poller");
+    console.warn("Redis failed, using poller");
   }
 } else {
-  console.warn("⚠️ No REDIS_URL, using poller");
+  console.warn("No REDIS_URL, using poller");
 }
 
 /* -------------------- Helpers -------------------- */
@@ -83,7 +86,7 @@ async function parsePdf(buffer) {
 
 /* -------------------- Embeddings -------------------- */
 
-console.log("🔄 Loading embedding model...");
+console.log("Loading embedding model...");
 const embedderPromise = pipeline(
   "feature-extraction",
   "Xenova/all-MiniLM-L6-v2"
@@ -229,14 +232,14 @@ async function processPdfBufferAndInsert(
   try {
     const pdfData = await parsePdf(fileBuffer);
 
-    console.log("📄 Pages:", pdfData.numpages);
-    console.log("📄 Text length:", pdfData.text.length);
+    console.log("Pages:", pdfData.numpages);
+    console.log("Text length:", pdfData.text.length);
 
     const docType = classifyDocument(pdfData.text, {
       pages: pdfData.numpages,
     });
 
-    console.log("🧠 Document type:", docType);
+    console.log("Document type:", docType);
 
     let chunksWithMeta;
     if (docType === "short_structured" || docType === "resume") {
@@ -246,7 +249,7 @@ async function processPdfBufferAndInsert(
     }
 
     console.log(
-      `🔖 ${chunksWithMeta.length} chunks created for document ${documentId}`
+      `${chunksWithMeta.length} chunks created for document ${documentId}`
     );
 
     for (const chunk of chunksWithMeta) {
@@ -267,13 +270,13 @@ async function processPdfBufferAndInsert(
         char_end: chunk.char_end,
       });
 
-      if (error) console.error("❌ Insert error:", error);
+      if (error) console.error("Insert error:", error);
     }
 
-    console.log(`✅ Finished document ${documentId}`);
+    console.log(`Finished document ${documentId}`);
   } catch (err) {
     console.error(
-      "❌ PDF processing error for",
+      "PDF processing error for",
       filePathForLog || documentId,
       ":",
       err?.message || err
@@ -290,24 +293,24 @@ if (redisReady && connection) {
       const { filePath, documentId } = job.data;
 
       if (!filePath || !fs.existsSync(filePath)) {
-        console.error("❌ File not found:", filePath);
+        console.error("File not found:", filePath);
         return;
       }
 
-      console.log("📄 Processing PDF (worker):", filePath);
+      console.log("Processing PDF (worker):", filePath);
       const buffer = fs.readFileSync(filePath);
       await processPdfBufferAndInsert(buffer, documentId, filePath);
     },
     { connection }
   );
 
-  console.log("🧵 BullMQ worker running...");
+  console.log("BullMQ worker running...");
 }
 
 /* -------------------- Poller Fallback -------------------- */
 
 if (!redisReady) {
-  console.warn("⏱️ Starting poller (30s interval)");
+  console.warn("Starting poller (30s interval)");
 
   async function pollAndProcess() {
     try {
@@ -336,7 +339,7 @@ if (!redisReady) {
         if (!resp.ok) continue;
 
         const buffer = Buffer.from(await resp.arrayBuffer());
-        console.log("📄 Processing PDF (poller):", doc.storage_path);
+        console.log("Processing PDF (poller):", doc.storage_path);
 
         await processPdfBufferAndInsert(
           buffer,
@@ -345,7 +348,7 @@ if (!redisReady) {
         );
       }
     } catch (e) {
-      console.error("❌ Poller error:", e?.message || e);
+      console.error("Poller error:", e?.message || e);
     }
   }
 
@@ -353,4 +356,4 @@ if (!redisReady) {
   setInterval(pollAndProcess, 30_000);
 }
 
-console.log("🚀 Worker started and ready");
+console.log("Worker started and ready");

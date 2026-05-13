@@ -10,19 +10,19 @@ import { Queue } from 'bullmq';
 
 import supabaseServer from '../../lib/supabaseServer';
 import { getUserFromReq } from '../../lib/auth';
+import { processPdfText } from '../../lib/ingestionPipeline';
 
 export const config = {
   api: { bodyParser: false },
 };
 
-/* ---------------- Embeddings ---------------- */
+
 
 const embedderPromise = pipeline(
   'feature-extraction',
   'Xenova/all-MiniLM-L6-v2'
 );
 
-/* ---------------- Helpers ---------------- */
 
 function cleanText(text) {
   return text
@@ -32,11 +32,6 @@ function cleanText(text) {
     .trim();
 }
 
-/**
- * IMPORTANT:
- * pdf-parse MUST be required dynamically
- * to avoid Turbopack CJS resolution crash
- */
 async function parsePdf(buffer) {
   const { createRequire } = await import('module');
   const require = createRequire(import.meta.url);
@@ -49,7 +44,7 @@ async function parsePdf(buffer) {
   };
 }
 
-/* ---------------- BullMQ Queue ---------------- */
+
 
 async function createQueue() {
   const redisUrl = process.env.REDIS_URL;
@@ -88,12 +83,11 @@ async function createQueue() {
       queue: new Queue('pdf-processing', { connection }),
     };
   } catch {
-    try { connection?.disconnect(); } catch {}
+    try { connection?.disconnect(); } catch { }
     return null;
   }
 }
 
-/* ---------------- API Handler ---------------- */
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -136,11 +130,16 @@ export default async function handler(req, res) {
             /* ---------- Per-user dedup ---------- */
 
             const { data: existing } = await supabaseServer
+
               .from('documents')
-              .select('id')
-              .eq('storage_path', storagePath)
+
+              .select('id, document_name')
+
+              .eq('file_hash', hash)
+
               .eq('user_id', user.id)
-              .limit(1);
+
+              .single();
 
             if (existing?.length) {
               results.push({
@@ -153,7 +152,6 @@ export default async function handler(req, res) {
               continue;
             }
 
-            /* ---------- Storage upload (global dedup) ---------- */
 
             const { data: storageData, error: storageError } =
               await supabaseServer.storage
@@ -163,7 +161,7 @@ export default async function handler(req, res) {
                   contentType: 'application/pdf',
                 });
 
-            // ✅ Ignore "already exists"
+
             if (
               storageError &&
               !storageError.message?.toLowerCase().includes('already exists')
@@ -179,31 +177,50 @@ export default async function handler(req, res) {
             const { error: insertErr } = await supabaseServer
               .from('documents')
               .insert({
-                user_id: user.id,
-                file_name: origName,
-                storage_path: finalStoragePath,
-                file_hash: hash,
-              });
+
+                user_id:
+                  user.id,
+
+                document_name:
+                  origName,
+
+                source:
+                  finalStoragePath,
+
+                file_hash:
+                  hash,
+
+                document_type:
+                  "technical_docs",
+
+                security_level:
+                  "internal",
+
+                contains_pii:
+                  false,
+
+                total_chunks:
+                  0,
+              })
 
             if (insertErr) {
               throw new Error(insertErr.message);
             }
 
-            /* ---------- Fetch inserted document (scoped to user) ---------- */
 
-            const { data: document, error: fetchErr } = await supabaseServer
-              .from('documents')
-              .select('id')
-              .eq('storage_path', finalStoragePath)
-              .eq('user_id', user.id)
-              .limit(1)
-              .single();
-
+            const { data: document, error: fetchErr } =
+              await supabaseServer
+                .from('documents')
+                .select('id, document_name')
+                .eq('file_hash', hash)
+                .eq('user_id', user.id)
+                .single();
             if (fetchErr || !document) {
-              throw new Error('Failed to fetch inserted document');
+              throw new Error(
+                'Failed to fetch inserted document'
+              );
             }
 
-            /* ---------- Queue or inline ---------- */
 
             const qInfo = await createQueue();
 
@@ -215,7 +232,6 @@ export default async function handler(req, res) {
               });
 
               qInfo.connection.disconnect();
-
               results.push({
                 fileName: origName,
                 documentId: document.id,
@@ -231,29 +247,27 @@ export default async function handler(req, res) {
                 note: 'Redis unavailable – inline processing',
               });
 
-              // Inline fallback
+
               (async () => {
                 try {
-                  const embedder = await embedderPromise;
-                  const pdfData = await parsePdf(fileContent);
 
-                  const chunks = pdfData.text
-                    .split('\n\n')
-                    .map(cleanText)
-                    .filter(Boolean);
 
-                  for (const chunk of chunks) {
-                    const embedding = await embedder(chunk, {
-                      pooling: 'mean',
-                      normalize: true,
+                  const pdfData =await parsePdf(fileContent);
+
+                  const enrichedChunks =await processPdfText({
+                      text:pdfData.text,
+                      documentId:document.id,
+                      fileName:origName,
+                      fileHash:hash,
                     });
 
-                    await supabaseServer.from('chunks').insert({
-                      document_id: document.id,
-                      chunk_text: chunk,
-                      embedding: Array.from(embedding.data),
-                      token_count: chunk.split(/\s+/).length,
-                    });
+
+                  const { error: chunkError } =
+                    await supabaseServer
+                      .from("document_chunks")
+                      .insert(enrichedChunks);
+                  if (chunkError) {
+                    throw chunkError;
                   }
                 } catch (e) {
                   console.error('Inline processing failed:', e);

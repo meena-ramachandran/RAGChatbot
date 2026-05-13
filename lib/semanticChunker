@@ -1,0 +1,219 @@
+import { pipeline } from '@xenova/transformers';
+import { encode } from 'gpt-tokenizer';
+
+
+const embedderPromise = pipeline(
+  'feature-extraction',
+  'Xenova/all-MiniLM-L6-v2'
+);
+
+
+
+function tokenCount(text) {
+  return encode(text).length;
+}
+
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (
+    Math.sqrt(normA) *
+    Math.sqrt(normB)
+  );
+}
+
+function splitSentences(text) {
+  const matches =
+    text.match(
+      /[^.!?]+[.!?]+/g
+    );
+  if (!matches?.length) {
+    return [text];
+  }
+  return matches
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+
+async function generateEmbedding(text) {
+  const embedder =await embedderPromise;
+  const output =await embedder(text, {
+      pooling: 'mean',
+      normalize: true,
+    });
+  return Array.from(output.data);
+}
+
+async function embedSentences(sentences) {
+  return Promise.all(
+    sentences.map((s) =>
+      generateEmbedding(s)
+    )
+  );
+}
+
+function detectBoundaries({sentences,embeddings,}) {
+  const similarities = [];
+  for (
+    let i = 0;
+    i < embeddings.length - 1;
+    i++
+  ) {
+    const similarity =
+      cosineSimilarity(
+        embeddings[i],
+        embeddings[i + 1]
+      );
+    similarities.push(similarity);
+  }
+
+  const avg =similarities.reduce(
+      (a, b) => a + b,
+      0
+    ) / similarities.length;
+
+
+  const variance =similarities.reduce(
+      (acc, val) =>
+        acc + Math.pow(val - avg, 2),
+      0
+    ) / similarities.length;
+
+
+  const stdDev =
+    Math.sqrt(variance);
+
+
+  // semantic drop threshold
+  const threshold =avg - stdDev;
+
+  const boundaries = [];
+
+  for (
+    let i = 0;
+    i < similarities.length;
+    i++
+  ) {
+
+    if (
+      similarities[i] < threshold
+    ) {
+
+      boundaries.push(i);
+    }
+  }
+
+  return boundaries;
+}
+
+function buildSemanticChunks({
+  sentences,
+  boundaries,
+}) {
+  const chunks = [];
+  let currentChunk = [];
+  for (
+    let i = 0;
+    i < sentences.length;
+    i++
+  ) {
+    currentChunk.push(
+      sentences[i]
+    );
+    if (
+      boundaries.includes(i)
+    ) {
+      chunks.push(
+        currentChunk.join(' ')
+      );
+      currentChunk = [];
+    }
+  }
+
+  if (currentChunk.length) {
+    chunks.push(
+      currentChunk.join(' ')
+    );
+  }
+
+  return chunks;
+}
+
+
+function tokenAwareMerge({
+  chunks,
+  maxTokens = 350,
+  overlapTokens = 40,
+}) {
+  const finalChunks = [];
+  let current = [];
+  let currentTokens = 0;
+  for (const chunk of chunks) {
+    const chunkTokens =tokenCount(chunk);
+    if (
+      currentTokens + chunkTokens >
+      maxTokens
+    ) {
+      finalChunks.push(
+        current.join(' ')
+      );
+      const overlap = [];
+      let overlapCount = 0;
+      for (let i = current.length - 1;i >= 0;i--) {
+        const t =tokenCount(current[i]);
+        if (
+          overlapCount + t >
+          overlapTokens
+        ) {
+          break;
+        }
+        overlap.unshift(
+          current[i]
+        );
+        overlapCount += t;
+      }
+      current = overlap;
+      currentTokens = overlapCount;
+    }
+    current.push(chunk);
+    currentTokens += chunkTokens;
+  }
+  if (current.length) {
+    finalChunks.push(
+      current.join(' ')
+    );
+  }
+
+  return finalChunks;
+}
+
+export async function semanticChunkDocument(text) {
+  const sentences =splitSentences(text);
+  const embeddings = await embedSentences(sentences);
+  const boundaries = detectBoundaries({
+      sentences,
+      embeddings,
+    });
+  const semanticChunks =buildSemanticChunks({
+      sentences,
+      boundaries,
+    });
+  const finalChunks =tokenAwareMerge({
+      chunks: semanticChunks,
+      maxTokens: 350,
+      overlapTokens: 40,
+    });
+  return finalChunks.map((chunk, index) => ({
+      chunk_index:index,
+      text_content:chunk,
+      token_count:tokenCount(chunk),
+    })
+  );
+}
