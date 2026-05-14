@@ -1,5 +1,3 @@
-// pages/api/chat.js
-
 import { Pool } from 'pg';
 import natural from 'natural';
 import { encode } from 'gpt-tokenizer';

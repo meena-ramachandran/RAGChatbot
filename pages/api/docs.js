@@ -1,14 +1,9 @@
-// pages/api/docs.js
 import supabaseServer from '../../lib/supabaseServer';
 import { getUserFromReq } from '../../lib/auth';
 
 export default async function handler(req, res) {
   const user = getUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  /* =========================
-     GET: List documents
-     ========================= */
   if (req.method === 'GET') {
     try {
       let data, error;
@@ -24,7 +19,6 @@ export default async function handler(req, res) {
         error = resp.error;
         if (error) throw error;
       } catch {
-        // fallback if created_at doesn't exist
         const resp2 = await supabaseServer
           .from('documents')
           .select('id, file_name, storage_path')
@@ -45,7 +39,6 @@ export default async function handler(req, res) {
             if (urlData?.signedUrl) out.signed_url = urlData.signedUrl;
           }
         } catch {
-          // ignore signed url failures
         }
         return out;
       }));
@@ -57,9 +50,6 @@ export default async function handler(req, res) {
     }
   }
 
-  /* =========================
-     DELETE: Delete document
-     ========================= */
   if (req.method === 'DELETE') {
     const { documentId } = req.body;
     if (!documentId) {
@@ -67,7 +57,6 @@ export default async function handler(req, res) {
     }
 
     try {
-      // 1️⃣ Verify ownership & fetch storage path
       const { data: docs, error: fetchErr } = await supabaseServer
         .from('documents')
         .select('id, storage_path')
@@ -80,20 +69,18 @@ export default async function handler(req, res) {
       }
 
       const doc = docs[0];
-
-      // 2️⃣ Delete chunks
       await supabaseServer
         .from('chunks')
         .delete()
         .eq('document_id', documentId);
 
-      // 3️⃣ Delete document row
+
       await supabaseServer
         .from('documents')
         .delete()
         .eq('id', documentId);
 
-      // 4️⃣ Delete file from storage
+
       if (doc.storage_path) {
         await supabaseServer.storage
           .from('documents')
