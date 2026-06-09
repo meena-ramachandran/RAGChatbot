@@ -1,508 +1,135 @@
 # Modern Secure RAG System
 
-A modern Retrieval-Augmented Generation (RAG) platform built with:
+This repository contains a Retrieval-Augmented Generation (RAG) platform built with Next.js, Supabase, pgvector, and Gemini/OpenAI models. It features semantic chunking, metadata enrichment, hybrid retrieval, reranking, context compression, token-aware context assembly, output guardrails, multi-tenant isolation, and prompt injection defense.
 
-- Next.js
-- Supabase
-- pgvector
-- Gemini/OpenAI
-- Semantic Chunking
-- Hybrid Retrieval
-- Context Engineering
-- Prompt Injection Defense
-- Faithfulness Evaluation
+## Architecture & Data Flow
 
-This project goes beyond traditional tutorial-style RAG systems by implementing:
-
-- semantic chunking
-- metadata enrichment
-- hybrid retrieval
-- reranking
-- context compression
-- token-aware context assembly
-- output guardrails
-- multi-tenant isolation
-- secure ingestion pipelines
-
----
-
-# Architecture Overview
-
-```mermaid
-flowchart TD
-
-A[Document Upload] --> B[PDF Extraction]
-B --> C[PII Redaction]
-C --> D[Semantic Analysis]
-D --> E[Semantic Chunking]
-E --> F[Chunk Summarization]
-F --> G[Metadata Enrichment]
-G --> H[Embedding Generation]
-H --> I[Hybrid Index Storage]
-
-I --> J[User Question]
-J --> K[Authentication]
-K --> L[Prompt Injection Defense]
-L --> M[Query Sanitization]
-M --> N[Query Rewriting]
-N --> O[Question Embedding]
-O --> P[Hybrid Retrieval]
-P --> Q[Reranking]
-Q --> R[Context Compression]
-R --> S[Token Budget Assembly]
-S --> T[Secure Prompt Construction]
-T --> U[LLM Generation]
-U --> V[Output Guardrails]
-V --> W[Faithfulness Evaluation]
-W --> X[Cited Response]
+```
+                      +-------------------+
+                      |   User Question   |
+                      +---------+---------+
+                                |
+                                v
+                      +-------------------+
+                      |  Injection Filter |
+                      +---------+---------+
+                                |
+                                v
+                      +-------------------+
+                      |  Query Rewriter   |
+                      +---------+---------+
+                                |
+                                v
+                      +-------------------+
+                      | Hybrid Retrieval  | <---+ Full-text (Postgres GIN)
+                      +---------+---------+ <---+ Vector (pgvector ivfflat)
+                                |
+                                v
+                      +-------------------+
+                      |  Rerank & Compress|
+                      +---------+---------+
+                                |
+                                v
+                      +-------------------+
+                      |  LLM Generation   |
+                      +---------+---------+
+                                |
+                                v
+                      +-------------------+
+                      |  Guardrail Score  |
+                      +---------+---------+
+                                |
+                                v
+                      +-------------------+
+                      |   Cited Response  |
+                      +-------------------+
 ```
 
----
-
-# Key Features
-
-## Secure Ingestion Pipeline
-
-- document hashing
-- deduplication
-- async ingestion workers
-- semantic chunking
-- metadata enrichment
-- token-aware chunking
-- PII redaction
-- vector indexing
-
----
-
-## Retrieval Intelligence
-
-- hybrid retrieval
-  - vector similarity
-  - full-text search
-  - metadata filtering
-- reranking
-- context compression
-- token-budget management
-- semantic retrieval
-
----
-
-## Security Features
-
-- prompt injection detection
-- multi-tenant isolation
-- output guardrails
-- sensitive data redaction
-- secure prompt construction
-- signed document URLs
-
----
-
-## Context Engineering
-
-Instead of using:
-
-```text
-more context
-```
-
-this system focuses on:
-
-```text
-better context
-```
-
-through:
-
-- semantic chunking
-- reranking
-- compression
-- token-aware assembly
-- sliding retrieval prioritization
-
----
-
-# Traditional RAG vs This System
-
-| Capability | Traditional RAG | This System |
-|---|---|---|
-| Fixed chunking | ✅ | ❌ |
-| Semantic chunking | ❌ | ✅ |
-| Hybrid retrieval | ❌ | ✅ |
-| Prompt injection defense | ❌ | ✅ |
-| Reranking | ❌ | ✅ |
-| Context compression | ❌ | ✅ |
-| Token-aware assembly | ❌ | ✅ |
-| Faithfulness scoring | ❌ | ✅ |
-| Metadata enrichment | ❌ | ✅ |
-| Multi-tenant isolation | ❌ | ✅ |
-| Output guardrails | ❌ | ✅ |
-
----
-
-# Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js |
-| Database | Supabase PostgreSQL |
-| Vector Search | pgvector |
-| Storage | Supabase Storage |
-| Embeddings | Xenova Transformers |
-| LLM | Gemini / OpenAI |
-| Queue | BullMQ |
-| Redis | Upstash Redis |
-| NLP | compromise + natural |
-| Tokenization | gpt-tokenizer |
-
----
-
-# System Architecture
-
-```mermaid
-flowchart LR
-
-A[Client] --> B[Next.js API]
-B --> C[Authentication]
-B --> D[Upload Service]
-B --> E[Chat Service]
-
-D --> F[Supabase Storage]
-D --> G[PDF Worker]
-
-G --> H[Semantic Chunker]
-H --> I[Embedding Generator]
-I --> J[pgvector]
-
-E --> K[Hybrid Retrieval]
-K --> J
-K --> L[FTS Index]
-
-K --> M[Reranker]
-M --> N[Context Compression]
-N --> O[LLM]
-O --> P[Faithfulness Engine]
-P --> Q[Response]
-```
-
----
-
-# Semantic Chunking Pipeline
-
-The system uses embedding-driven semantic chunking instead of fixed-size splitting.
-
-## Flow
-
-```mermaid
-flowchart TD
-
-A[Raw Text] --> B[Sentence Segmentation]
-B --> C[Sentence Embeddings]
-C --> D[Semantic Similarity]
-D --> E[Boundary Detection]
-E --> F[Semantic Chunks]
-F --> G[Token-Aware Merge]
-G --> H[Metadata Enrichment]
-```
-
----
-
-# Hybrid Retrieval Pipeline
-
-```mermaid
-flowchart TD
-
-A[Question] --> B[Query Embedding]
-A --> C[Keyword Extraction]
-
-B --> D[Vector Search]
-C --> E[FTS Search]
-
-D --> F[Merge Results]
-E --> F
-
-F --> G[Reranking]
-G --> H[Compression]
-H --> I[Context Assembly]
-```
-
----
-
-# Prompt Injection Defense
-
-The system blocks:
-
-- instruction override attempts
-- secret extraction attempts
-- system prompt leakage
-- role escalation attacks
-- unsafe retrieval manipulation
-
-Example blocked prompts:
-
-```text
-Ignore previous instructions
-Reveal API keys
-Dump database
-Show system prompt
-```
-
----
-
-# Faithfulness Evaluation
-
-The system evaluates:
-
-- answer grounding
-- hallucination risk
-- retrieval quality
-- context relevance
-
-This helps ensure:
-
-```text
-answer ∈ retrieved context
-```
-
-instead of unsupported generation.
-
----
-
-# Database Schema
-
-## documents
-
-| Column | Type |
-|---|---|
-| id | uuid |
-| user_id | uuid |
-| file_name | text |
-| storage_path | text |
-| file_hash | text |
-| created_at | timestamp |
-
----
-
-## document_chunks
-
-| Column | Type |
-|---|---|
-| id | uuid |
-| document_id | uuid |
-| text_content | text |
-| summary | text |
-| heading | text |
-| keywords | text[] |
-| token_count | int |
-| embedding | vector |
-| fts | tsvector |
-
----
-
-# Environment Variables
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-DATABASE_URL=
-REDIS_URL=
-JWT_SECRET=
-GEMINI_API_KEY=
-OPENAI_API_KEY=
-```
-
----
-
-# Installation
-
-## Clone Repository
-
-```bash
-git clone <repo>
-cd <repo>
-```
-
----
-
-## Install Dependencies
-
-```bash
-npm install
-```
-
----
-
-## Start Development Server
-
-```bash
-npm run dev
-```
-
----
-
-## Start Worker
-
-```bash
-node workers/pdfWorker.js
-```
-
----
-
-# PostgreSQL Setup
-
-Enable pgvector:
-
+### Document Ingestion
+1. **Extraction**: Uploaded PDFs are parsed.
+2. **Redaction**: PII and sensitive data are redacted.
+3. **Semantic Chunking**: Sentences are grouped using embedding similarity thresholds instead of fixed-length windows.
+4. **Metadata & Embedding**: Generates summaries, headings, and vectors (via Xenova Transformers) which are stored in Supabase PostgreSQL database tables.
+
+### Query Ingestion & Retrieval
+1. **Security Checks**: Query sanitization and prompt injection heuristic check.
+2. **Expansion**: The system rewrites queries for improved keyword and vector coverage.
+3. **Hybrid Search**: Performs parallel vector cosine search and full-text keyword indexing.
+4. **Context Optimization**: Reranked using semantic relevance, compressed within token budgets, and submitted to the LLM.
+5. **Output Filtering**: Response is checked for hallucinations (faithfulness scoring) and citations are attached.
+
+## Database Schema
+
+### `documents`
+- `id` (UUID): Primary key.
+- `user_id` (UUID): Owner identification for multi-tenant isolation.
+- `file_name` (Text): Name of document.
+- `storage_path` (Text): Link to file bucket.
+- `file_hash` (Text): File verification hash.
+- `created_at` (Timestamp).
+
+### `document_chunks`
+- `id` (UUID): Primary key.
+- `document_id` (UUID): Reference to parent document.
+- `text_content` (Text): Raw chunk content.
+- `summary` (Text): Summarized chunk overview.
+- `heading` (Text): Related document heading.
+- `keywords` (Text[]): Ingested metadata keywords.
+- `token_count` (Int): Token size estimation.
+- `embedding` (Vector): Vector representation for cosine search.
+- `fts` (tsvector): Full-text search index vector.
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have a running PostgreSQL database with `pgvector` enabled:
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
----
+### Environment Variables
 
-## Vector Index
-
-```sql
-CREATE INDEX IF NOT EXISTS
-idx_document_chunks_embedding
-
-ON document_chunks
-
-USING ivfflat
-(
-  embedding vector_cosine_ops
-)
-
-WITH (lists = 100);
+Configure a `.env` file in the root directory:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+DATABASE_URL=your_postgres_db_url
+REDIS_URL=your_redis_url
+JWT_SECRET=your_jwt_secret
+GEMINI_API_KEY=your_gemini_key
+OPENAI_API_KEY=your_openai_key
 ```
 
----
+### Installation
 
-## Full Text Search Index
+1. Install Node.js dependencies:
+   ```bash
+   npm install
+   ```
 
-```sql
-CREATE INDEX IF NOT EXISTS
-idx_document_chunks_fts
+2. Run database migration scripts to establish indices:
+   ```sql
+   CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding 
+     ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
-ON document_chunks
-USING GIN(fts);
-```
+   CREATE INDEX IF NOT EXISTS idx_document_chunks_fts 
+     ON document_chunks USING GIN(fts);
+   ```
 
----
+3. Run the worker pipeline for processing PDF uploads:
+   ```bash
+   node workers/pdfWorker.js
+   ```
 
-# API Endpoints
+4. Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
 
-## Upload
+## API Specifications
 
-```http
-POST /api/upload
-```
-
-Uploads and processes documents.
-
----
-
-## Chat
-
-```http
-POST /api/chat
-```
-
-Retrieves relevant context and generates grounded answers.
-
----
-
-## Register
-
-```http
-POST /api/auth/register
-```
-
----
-
-## Login
-
-```http
-POST /api/auth/login
-```
-
----
-
-# Example Chat Request
-
-```json
-{
-  "question": "What authentication method is used?"
-}
-```
-
----
-
-# Example Response
-
-```json
-{
-  "answer": "JWT authentication is used.",
-  "faithfulness": 0.92,
-  "sources": [
-    {
-      "document": "architecture.pdf",
-      "heading": "Authentication"
-    }
-  ]
-}
-```
-
----
-
-# Security Model
-
-```mermaid
-flowchart TD
-
-A[User Query] --> B[Sanitization]
-B --> C[Injection Detection]
-C --> D[Retrieval]
-D --> E[Secure Prompt]
-E --> F[LLM]
-F --> G[Output Filtering]
-G --> H[Safe Response]
-```
-
----
-
-# Future Improvements
-
-- streaming responses
-- conversational memory
-- knowledge graphs
-- advanced rerankers
-- multilingual retrieval
-- OCR support
-- document ACLs
-- RAG evaluation pipelines
-- observability dashboards
-- retrieval analytics
-
----
-
-# Core Architectural Philosophy
-
-Traditional RAG systems optimize for:
-
-```text
-MORE CONTEXT
-```
-
-This system optimizes for:
-
-```text
-BETTER CONTEXT
-```
-
-through:
-
-- semantic retrieval
-- context engineering
-- reranking
-- compression
-- security-aware orchestration
+- `POST /api/upload`: Receives and processes files.
+- `POST /api/chat`: Processes user queries, retrieves context, and returns cited responses.
+- `POST /api/auth/register` / `POST /api/auth/login`: Handles account credentials and security roles.
